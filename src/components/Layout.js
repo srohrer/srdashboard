@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Box, CssBaseline, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Box, CssBaseline, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip, Button } from '@mui/material';
 import { Menu as MuiMenu } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../contexts/ThemeContext';
@@ -9,6 +10,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import BlueIcon from '@mui/icons-material/BlurOn';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useUser } from '../contexts/UserContext';
 
 // Updated Main component to take full width regardless of sidebar state
@@ -40,7 +42,8 @@ const Layout = ({ children }) => {
   const [open, setOpen] = useState(false); // Default to closed for mobile-friendly experience
   const { currentTheme, setTheme, themeNames } = useTheme();
   const [themeMenuAnchor, setThemeMenuAnchor] = useState(null);
-  const { username } = useUser();
+  const { username, setUsername } = useUser();
+  const navigate = useNavigate();
   
   const toggleDrawer = () => {
     setOpen(!open);
@@ -100,25 +103,47 @@ const Layout = ({ children }) => {
     </>
   );
 
+  const handleLogout = () => {
+    setUsername('');
+    // Navigate to login screen
+    navigate('/login');
+  };
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Welcome, {username || 'Guest'}
-          </Typography>
-          {themeSelector}
-          <Tooltip title="Toggle sidebar">
-            <IconButton 
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          {/* Left section with logout button */}
+          <Box>
+            <Button 
               color="inherit" 
-              onClick={toggleDrawer} 
-              edge="end"
-              sx={{ ml: 1 }}
+              startIcon={<LogoutIcon />}
+              onClick={handleLogout}
             >
-              <MenuOpenIcon />
-            </IconButton>
-          </Tooltip>
+              Log out
+            </Button>
+          </Box>
+          
+          {/* Center section with username */}
+          <Typography variant="h6" component="div">
+            {username || 'Guest'}
+          </Typography>
+          
+          {/* Right section with theme selector and sidebar toggle */}
+          <Box sx={{ display: 'flex' }}>
+            {themeSelector}
+            <Tooltip title="Toggle sidebar">
+              <IconButton 
+                color="inherit" 
+                onClick={toggleDrawer} 
+                edge="end"
+                sx={{ ml: 1 }}
+              >
+                <MenuOpenIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Toolbar>
       </AppBar>
       

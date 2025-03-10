@@ -11,3 +11,42 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.drag-handle:active {
+  cursor: grabbing !important;
+}
+
+/* Make the content area non-draggable */
+.widget-content {
+  cursor: default !important;
+  pointer-events: auto !important;
+  z-index: 5; /* Ensure content is above the drag handle */
+}
+
+/* Override specific input elements to ensure proper cursor */
+.widget-content input, 
+.widget-content textarea, 
+.widget-content [contenteditable] {
+  cursor: text !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+.widget-content button,
+.widget-content a,
+.widget-content select,
+.widget-content [role="button"] {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+/* Ensure proper text editing */
+.MuiTextField-root {
+  pointer-events: auto !important;
+}
+
+.MuiInputBase-input {
+  cursor: text !important;
+  pointer-events: auto !important;
+}
