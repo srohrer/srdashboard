@@ -25,9 +25,6 @@ const TextboxWidget = ({ userContext, themeContext }) => {
         height: '100%', 
         position: 'relative',
       }}
-      // Prevent drag events from triggering on the container
-      onClick={preventDragPropagation}
-      onMouseDown={preventDragPropagation}
     >
       {/* Editable textbox */}
       <TextField
@@ -56,8 +53,6 @@ const TextboxWidget = ({ userContext, themeContext }) => {
           pointerEvents: 'auto'
         }}
         // Critical for preventing drag while editing text
-        onClick={preventDragPropagation}
-        onMouseDown={preventDragPropagation}
         inputProps={{
           style: { cursor: 'text' }
         }}

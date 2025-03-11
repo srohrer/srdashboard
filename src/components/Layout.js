@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, CssBaseline, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip, Button } from '@mui/material';
 import { Menu as MuiMenu } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../contexts/ThemeContext';
-import Sidebar from './Sidebar';
+import WidgetToolkit from './WidgetToolkit';
 import PaletteIcon from '@mui/icons-material/Palette';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -12,13 +12,28 @@ import BlueIcon from '@mui/icons-material/BlurOn';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useUser } from '../contexts/UserContext';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  pointerWithin,
+  defaultDropAnimationSideEffects,
+  DragOverlay
+} from '@dnd-kit/core';
+import Widget from './Widget';
+import ExampleWidget from './ExampleWidget';
+import TextboxWidget from './TextboxWidget';
 
 // Updated Main component to take full width regardless of sidebar state
 const Main = styled('main')(({ theme }) => ({
   flexGrow: 1,
   padding: theme.spacing(3),
   width: '100%',
+  height: 'calc(100vh - 64px)', // Ensure main content is contained within viewport height
   marginTop: 64, // AppBar height
+  overflow: 'hidden', // Prevent scrollbars at this level
 }));
 
 // Create a styled component for the right sidebar container
@@ -27,7 +42,7 @@ const RightSidebarContainer = styled('div', { shouldForwardProp: (prop) => prop 
     position: 'fixed',
     top: 64, // AppBar height
     right: 0,
-    height: '100%',
+    height: 'calc(100vh - 64px)', // Ensure sidebar is contained within viewport height
     zIndex: theme.zIndex.drawer,
     width: 240, // Sidebar width
     transform: open ? 'translateX(0)' : 'translateX(100%)',
@@ -35,8 +50,20 @@ const RightSidebarContainer = styled('div', { shouldForwardProp: (prop) => prop 
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
+    overflow: 'hidden', // Prevent scrollbars at this level
   }),
 );
+
+// Define custom drop animation
+const customDropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0.5',
+      },
+    },
+  }),
+};
 
 const Layout = ({ children }) => {
   const [open, setOpen] = useState(false); // Default to closed for mobile-friendly experience
@@ -44,6 +71,44 @@ const Layout = ({ children }) => {
   const [themeMenuAnchor, setThemeMenuAnchor] = useState(null);
   const { username, setUsername } = useUser();
   const navigate = useNavigate();
+  
+  // State for tracking active drag item and its type
+  const [activeId, setActiveId] = useState(null);
+  const [activeDragType, setActiveDragType] = useState(null);
+  
+  // Track drag offsets for precise overlay positioning
+  const [dragOffsets, setDragOffsets] = useState({ x: 0, y: 0 });
+  
+  // Set up DndContext sensors with optimized settings
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      // Use minimal activation constraints to respond immediately to drag events
+      activationConstraint: {
+        // No delay, minimal distance required
+        delay: 0,
+        tolerance: 1,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
+  
+  // Listen for widget drag start events to track offsets
+  useEffect(() => {
+    const handleWidgetDragStart = (event) => {
+      if (event.detail) {
+        setDragOffsets({ 
+          x: event.detail.offsetX || 0, 
+          y: event.detail.offsetY || 0 
+        });
+      }
+    };
+    
+    document.addEventListener('widget-drag-start', handleWidgetDragStart);
+    
+    return () => {
+      document.removeEventListener('widget-drag-start', handleWidgetDragStart);
+    };
+  }, []);
   
   const toggleDrawer = () => {
     setOpen(!open);
@@ -60,6 +125,58 @@ const Layout = ({ children }) => {
   const handleThemeChange = (themeName) => {
     setTheme(themeName);
     handleThemeMenuClose();
+  };
+
+  // DnD event handlers
+  const handleDragStart = (event) => {
+    const { active } = event;
+    setActiveId(active.id);
+    
+    // If this is from the toolkit, extract the widget type
+    if (active.id.toString().startsWith('toolkit-')) {
+      const widgetType = active.data.current?.type || 'example';
+      setActiveDragType(widgetType);
+    }
+  };
+  
+  const handleDragMove = (event) => {
+    const { active } = event;
+    setActiveId(active.id);
+    
+    // Dispatch custom event for Dashboard to handle
+    const customEvent = new CustomEvent('dnd-drag-move', {
+      detail: event
+    });
+    document.dispatchEvent(customEvent);
+  };
+  
+  const handleDragEnd = (event) => {
+    // Dispatch custom event for Dashboard to handle
+    const customEvent = new CustomEvent('dnd-drag-end', {
+      detail: event
+    });
+    document.dispatchEvent(customEvent);
+    
+    setActiveId(null);
+    setActiveDragType(null);
+    // Reset drag offsets after the drop
+    setDragOffsets({ x: 0, y: 0 });
+  };
+
+  // Render widget content for overlay based on type
+  const renderDragPreview = () => {
+    if (!activeId || !activeId.toString().startsWith('toolkit-')) {
+      return null;
+    }
+    
+    // Render the appropriate content based on the widget type
+    switch (activeDragType) {
+      case 'textbox':
+        return <TextboxWidget />;
+      case 'example':
+      default:
+        return <ExampleWidget />;
+    }
   };
 
   const getThemeIcon = (themeName) => {
@@ -110,53 +227,115 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          {/* Left section with logout button */}
-          <Box>
-            <Button 
-              color="inherit" 
-              startIcon={<LogoutIcon />}
-              onClick={handleLogout}
-            >
-              Log out
-            </Button>
-          </Box>
-          
-          {/* Center section with username */}
-          <Typography variant="h6" component="div">
-            {username || 'Guest'}
-          </Typography>
-          
-          {/* Right section with theme selector and sidebar toggle */}
-          <Box sx={{ display: 'flex' }}>
-            {themeSelector}
-            <Tooltip title="Toggle sidebar">
-              <IconButton 
+    <DndContext 
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
+      onDragEnd={handleDragEnd}
+      // Add smooth drag overlay options
+      autoScroll={{
+        enabled: true,
+        speed: 10,
+        threshold: {
+          x: 0.2,
+          y: 0.2
+        }
+      }}
+      // Optimization for drag performance
+      measuring={{
+        droppable: {
+          strategy: 'always',
+        },
+      }}
+    >
+      <Box sx={{ display: 'flex' }}>
+        <CssBaseline />
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+          <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            {/* Left section with logout button */}
+            <Box>
+              <Button 
                 color="inherit" 
-                onClick={toggleDrawer} 
-                edge="end"
-                sx={{ ml: 1 }}
+                startIcon={<LogoutIcon />}
+                onClick={handleLogout}
               >
-                <MenuOpenIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Toolbar>
-      </AppBar>
-      
-      {/* Main content that takes full width */}
-      <Main>
-        {children}
-      </Main>
-      
-      {/* Right sidebar as overlay */}
-      <RightSidebarContainer open={open}>
-        <Sidebar open={open} toggleDrawer={toggleDrawer} />
-      </RightSidebarContainer>
-    </Box>
+                Log out
+              </Button>
+            </Box>
+            
+            {/* Center section with username */}
+            <Typography variant="h6" component="div">
+              {username || 'Guest'}
+            </Typography>
+            
+            {/* Right section with theme selector and sidebar toggle */}
+            <Box sx={{ display: 'flex' }}>
+              {themeSelector}
+              <Tooltip title="Toggle sidebar">
+                <IconButton 
+                  color="inherit" 
+                  onClick={toggleDrawer} 
+                  edge="end"
+                  sx={{ ml: 1 }}
+                >
+                  <MenuOpenIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Toolbar>
+        </AppBar>
+        
+        {/* Main content that takes full width */}
+        <Main>
+          {children}
+        </Main>
+        
+        {/* Right sidebar as overlay */}
+        <RightSidebarContainer open={open}>
+          <WidgetToolkit open={open} toggleDrawer={toggleDrawer} activeId={activeId} />
+        </RightSidebarContainer>
+        
+        {/* Drag Overlay - shows a preview of the widget being dragged */}
+        <DragOverlay 
+          dropAnimation={customDropAnimation}
+          // Adjust the position of the overlay based on the drag offsets
+          adjustScale={false}
+          modifiers={[
+            ({ transform }) => {
+              if (activeId?.toString().startsWith('toolkit-')) {
+                return {
+                  ...transform,
+                  x: transform.x - dragOffsets.x,
+                  y: transform.y - dragOffsets.y,
+                };
+              }
+              return transform;
+            }
+          ]}
+        >
+          {activeId && activeId.toString().startsWith('toolkit-') && (
+            <Box sx={{ 
+              width: 300, // Exact same width as widgets on the canvas
+              pointerEvents: 'none',
+              opacity: 0.9,
+              bgcolor: 'background.paper',
+              borderRadius: 2,
+              boxShadow: 6,
+              overflow: 'hidden',
+              '& .MuiPaper-root': {
+                height: '100%',
+                boxSizing: 'border-box'
+              }
+            }}>
+              <Widget>
+                {renderDragPreview()}
+              </Widget>
+            </Box>
+          )}
+        </DragOverlay>
+      </Box>
+    </DndContext>
   );
 };
 
