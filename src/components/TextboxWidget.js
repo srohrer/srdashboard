@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, TextField } from '@mui/material';
 
 /**
@@ -6,12 +6,26 @@ import { Box, TextField } from '@mui/material';
  * @param {Object} props - Component props
  * @param {Object} userContext - User context passed from Widget wrapper
  * @param {Object} themeContext - Theme context passed from Widget wrapper
+ * @param {string} content - Content for the textbox
+ * @param {function} onContentChange - Callback when content changes
+ * @param {string} widgetId - ID of the widget
  */
-const TextboxWidget = ({ userContext, themeContext }) => {
-  const [text, setText] = useState('');
+const TextboxWidget = ({ userContext, themeContext, content = '', onContentChange, widgetId }) => {
+  const [text, setText] = useState(content);
+
+  // Update local state when content prop changes
+  useEffect(() => {
+    setText(content);
+  }, [content]);
 
   const handleChange = (event) => {
-    setText(event.target.value);
+    const newText = event.target.value;
+    setText(newText);
+    
+    // Notify parent component about the content change
+    if (onContentChange) {
+      onContentChange(widgetId, newText);
+    }
   };
   
   // This function is critical to prevent drag events from interfering with text editing

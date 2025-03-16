@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -6,14 +6,21 @@ import {
   IconButton, 
   Grid,
   Paper,
-  Tooltip
+  Tooltip,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemButton
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import ChevronRight from '@mui/icons-material/ChevronRight';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
-import InsertChartIcon from '@mui/icons-material/InsertChart';
 import ImageIcon from '@mui/icons-material/Image';
-import TableChartIcon from '@mui/icons-material/TableChart';
+import WidgetsIcon from '@mui/icons-material/Widgets';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import ChecklistIcon from '@mui/icons-material/Checklist';
 import { useDraggable } from '@dnd-kit/core';
 
 // Styled component for the drawer header
@@ -156,33 +163,111 @@ const WidgetPreview = ({ id, icon, label, type, isActive }) => {
 };
 
 const WidgetToolkit = ({ open, toggleDrawer, activeId }) => {
-  // Widget types available in the toolkit
-  const widgetTypes = [
-    { 
-      id: 'textbox', 
-      type: 'textbox',
-      label: 'Text Box', 
-      icon: <TextFieldsIcon fontSize="large" color="primary" /> 
-    },
-    { 
-      id: 'chart', 
-      type: 'example', // Using the existing example widget for now
-      label: 'Chart', 
-      icon: <InsertChartIcon fontSize="large" color="secondary" /> 
-    },
-    { 
-      id: 'image', 
-      type: 'example', // Using the existing example widget for now
-      label: 'Image', 
-      icon: <ImageIcon fontSize="large" color="success" /> 
-    },
-    { 
-      id: 'table', 
-      type: 'example', // Using the existing example widget for now
-      label: 'Table', 
-      icon: <TableChartIcon fontSize="large" color="warning" /> 
+  // State to track the current section
+  const [currentSection, setCurrentSection] = useState('main');
+  
+  // Define sections structure
+  const sections = {
+    basic: {
+      title: 'Basic',
+      icon: <WidgetsIcon />,
+      widgets: [
+        { 
+          id: 'textbox', 
+          type: 'textbox',
+          label: 'Text Box', 
+          icon: <TextFieldsIcon fontSize="large" color="primary" /> 
+        },
+        { 
+          id: 'icon', 
+          type: 'icon',
+          label: 'Icon', 
+          icon: <EmojiEmotionsIcon fontSize="large" color="primary" /> 
+        },
+        { 
+          id: 'todo', 
+          type: 'todo',
+          label: 'Todo List', 
+          icon: <ChecklistIcon fontSize="large" color="primary" /> 
+        },
+        { 
+          id: 'example', 
+          type: 'example',
+          label: 'Example', 
+          icon: <WidgetsIcon fontSize="large" color="secondary" /> 
+        }
+      ]
     }
-  ];
+  };
+  
+  // Handle section navigation
+  const navigateToSection = (sectionKey) => {
+    setCurrentSection(sectionKey);
+  };
+  
+  // Handle back navigation
+  const navigateBack = () => {
+    setCurrentSection('main');
+  };
+  
+  // Render the appropriate content based on the current section
+  const renderSectionContent = () => {
+    // Main section showing the list of available sections
+    if (currentSection === 'main') {
+      return (
+        <Box sx={{ p: 2, flexShrink: 0 }}>
+          <List>
+            {Object.keys(sections).map((sectionKey) => (
+              <ListItem 
+                disablePadding 
+                key={sectionKey}
+              >
+                <ListItemButton 
+                  onClick={() => navigateToSection(sectionKey)}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ListItemIcon>
+                      {sections[sectionKey].icon}
+                    </ListItemIcon>
+                    <ListItemText primary={sections[sectionKey].title} />
+                  </Box>
+                  <ChevronRight color="action" fontSize="small" />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      );
+    } 
+    // Section-specific view showing widgets in that section
+    else if (sections[currentSection]) {
+      const section = sections[currentSection];
+      return (
+        <Box sx={{ p: 2, flexShrink: 0 }}>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {section.widgets.map((widget) => (
+              <Grid item xs={6} key={widget.id} sx={{ mb: 2 }}>
+                <WidgetPreview
+                  id={widget.id}
+                  icon={widget.icon}
+                  label={widget.label}
+                  type={widget.type}
+                  isActive={activeId === `toolkit-${widget.id}`}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      );
+    }
+    // Fallback view
+    return null;
+  };
 
   return (
     <Box
@@ -196,37 +281,32 @@ const WidgetToolkit = ({ open, toggleDrawer, activeId }) => {
       }}
     >
       <DrawerHeader>
-        <IconButton onClick={toggleDrawer}>
-          <ChevronRight />
-        </IconButton>
-        <Typography variant="h6" sx={{ flexGrow: 1, marginLeft: 2 }}>
-          Widget Toolkit
-        </Typography>
+        {currentSection !== 'main' ? (
+          <>
+            <IconButton onClick={navigateBack}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                flexGrow: 1, 
+                textAlign: 'center',
+                marginRight: '48px' // Offset for back button to ensure true center
+              }}
+            >
+              {sections[currentSection]?.title || 'Toolbox'}
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: 'center' }}>
+            Toolbox
+          </Typography>
+        )}
       </DrawerHeader>
       <Divider />
       
       <ContentArea>
-        <Box sx={{ p: 2, flexShrink: 0 }}>
-          <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            Drag widgets to the canvas
-          </Typography>
-
-          <Divider sx={{ my: 1 }} />
-          
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            {widgetTypes.map((widget) => (
-              <Grid item xs={6} key={widget.id} sx={{ mb: 2 }}>
-                <WidgetPreview
-                  id={widget.id}
-                  icon={widget.icon}
-                  label={widget.label}
-                  type={widget.type}
-                  isActive={activeId === `toolkit-${widget.id}`}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+        {renderSectionContent()}
         
         <Box sx={{ marginTop: 'auto', p: 2, flexShrink: 0 }}>
           <Typography variant="caption" color="text.secondary">

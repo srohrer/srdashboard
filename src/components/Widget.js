@@ -9,11 +9,20 @@ import { useUser } from '../contexts/UserContext';
  * @param {ReactNode} props.children - The widget content to be wrapped
  * @param {Object} props.dragListeners - Drag event listeners from useDraggable
  * @param {boolean} props.isDragging - Whether the widget is currently being dragged
+ * @param {string} props.widgetType - The type of widget
  */
-const Widget = ({ children, dragListeners, isDragging }) => {
+const Widget = ({ children, dragListeners, isDragging, widgetType }) => {
   // Get context data to pass to children
   const themeContext = useTheme();
   const userContext = useUser();
+  
+  // Determine padding based on widget type
+  const getPadding = () => {
+    if (widgetType === 'icon') {
+      return 0.5; // Less padding for icon widgets
+    }
+    return 2; // Default padding for other widgets
+  };
   
   return (
     <Paper
@@ -25,7 +34,7 @@ const Widget = ({ children, dragListeners, isDragging }) => {
         flexDirection: 'column',
         overflow: 'hidden',
         position: 'relative',
-        p: 2,
+        p: getPadding(),
         // Disable transitions when dragging to improve performance
         transition: isDragging ? 'none' : 'box-shadow 0.2s',
         // Apply styles when being dragged

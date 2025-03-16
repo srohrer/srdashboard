@@ -1,18 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
-import { Box, Typography, IconButton, Button } from '@mui/material';
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { Box, Typography, IconButton, Button, Tooltip } from '@mui/material';
 import {
   useDraggable,
   useDroppable,
   DragOverlay
 } from '@dnd-kit/core';
 import DeleteIcon from '@mui/icons-material/Delete';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Widget from '../components/Widget';
-import ExampleWidget from '../components/ExampleWidget';
-import TextboxWidget from '../components/TextboxWidget';
 import React from 'react';
+import { useUser } from '../contexts/UserContext';
+import { getWidgetWidth, renderWidgetContent } from '../utils/widgetUtils';
 
 // Draggable widget component
-const DraggableWidget = ({ id, x, y, zIndex, children, onFocus }) => {
+const DraggableWidget = ({ id, x, y, zIndex, children, onFocus, type }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: id
   });
@@ -47,7 +48,7 @@ const DraggableWidget = ({ id, x, y, zIndex, children, onFocus }) => {
         position: 'absolute',
         left: `${x}px`,
         top: `${y}px`,
-        width: '300px', // Keep a consistent width of 300px
+        width: getWidgetWidth(type), // Use utility function
         // Apply the widget's z-index when not dragging
         zIndex: isDragging ? style.zIndex : zIndex,
         // Remove transition properties that could cause lag
@@ -59,7 +60,7 @@ const DraggableWidget = ({ id, x, y, zIndex, children, onFocus }) => {
     >
       {React.cloneElement(children, { 
         dragListeners: listeners,
-        isDragging: isDragging 
+        isDragging: isDragging
       })}
     </Box>
   );
@@ -136,17 +137,56 @@ const DeleteIndicator = ({ isVisible, direction, position }) => {
   );
 };
 
-const Dashboard = () => {
+// Main Dashboard component - wrap with forwardRef to expose resetDashboard method
+const Dashboard = forwardRef((props, ref) => {
+  const { username } = useUser();
   // State for tracking z-index counter
-  const [zCounter, setZCounter] = useState(100);
+  const [zCounter, setZCounter] = useState(() => {
+    // Try to get zCounter from localStorage first
+    if (username) {
+      const savedUserData = localStorage.getItem(`dashboard_${username}`);
+      if (savedUserData) {
+        try {
+          const parsedData = JSON.parse(savedUserData);
+          if (parsedData.zCounter) {
+            return parsedData.zCounter;
+          }
+        } catch (error) {
+          console.error('Error loading zCounter from localStorage:', error);
+        }
+      }
+    }
+    // Fall back to default value
+    return 100;
+  });
   
-  // Initial widgets with positions and z-indices
-  const [widgets, setWidgets] = useState([
+  // Default widgets configuration
+  const defaultWidgets = [
     { id: '1', x: 50, y: 50, type: 'example', zIndex: 1 },
     { id: '2', x: 350, y: 50, type: 'example', zIndex: 2 },
-    { id: '3', x: 50, y: 200, type: 'textbox', zIndex: 3 },
-    { id: '4', x: 350, y: 200, type: 'example', zIndex: 4 },
-  ]);
+    { id: '3', x: 50, y: 200, type: 'textbox', zIndex: 3, content: '' },
+    { id: '4', x: 350, y: 200, type: 'icon', zIndex: 4, content: 'Star' },
+  ];
+  
+  // Initialize widgets from localStorage if available, otherwise use defaults
+  const [widgets, setWidgets] = useState(() => {
+    // Try to get widgets from localStorage first
+    if (username) {
+      const savedUserData = localStorage.getItem(`dashboard_${username}`);
+      if (savedUserData) {
+        try {
+          const parsedData = JSON.parse(savedUserData);
+          if (parsedData.widgets && Array.isArray(parsedData.widgets)) {
+            return parsedData.widgets;
+          }
+        } catch (error) {
+          console.error('Error loading widgets from localStorage:', error);
+        }
+      }
+    }
+    // Fall back to default widgets
+    return defaultWidgets;
+  });
   
   // Track drag offsets for precise positioning
   const [dragOffsets, setDragOffsets] = useState({ x: 0, y: 0 });
@@ -169,6 +209,22 @@ const Dashboard = () => {
     bottom: 0 
   });
 
+  // Save widgets to localStorage whenever they change
+  useEffect(() => {
+    const saveUserData = () => {
+      if (!username) return;
+      
+      const dataToSave = {
+        widgets,
+        zCounter
+      };
+      
+      localStorage.setItem(`dashboard_${username}`, JSON.stringify(dataToSave));
+    };
+    
+    saveUserData();
+  }, [widgets, zCounter, username]);
+  
   // Listen for widget drag start events to track offsets
   useEffect(() => {
     const handleWidgetDragStart = (event) => {
@@ -403,17 +459,33 @@ const Dashboard = () => {
     };
   }, [widgets, canvasBounds, mousePosition, isDraggingOffscreen, zCounter, dragOffsets]);
 
-  // Render the appropriate widget content based on type
-  const renderWidgetContent = (widget) => {
-    switch (widget.type) {
-      case 'example':
-        return <ExampleWidget />;
-      case 'textbox':
-        return <TextboxWidget />;
-      default:
-        return <Box>Widget Content</Box>;
+  // Handle widget content changes
+  const handleWidgetContentChange = (widgetId, newContent) => {
+    setWidgets(widgets.map(widget => {
+      if (widget.id === widgetId) {
+        return { ...widget, content: newContent };
+      }
+      return widget;
+    }));
+  };
+
+  // Reset dashboard to default layout - expose this via the ref
+  const resetDashboard = () => {
+    if (window.confirm('Are you sure you want to reset your dashboard? This will remove all your customizations.')) {
+      setWidgets([]);
+      setZCounter(100);
+      
+      // Clear localStorage for this user
+      if (username) {
+        localStorage.removeItem(`dashboard_${username}`);
+      }
     }
   };
+  
+  // Expose resetDashboard method via ref
+  useImperativeHandle(ref, () => ({
+    resetDashboard
+  }));
 
   return (
     <Box sx={{ 
@@ -442,9 +514,10 @@ const Dashboard = () => {
             y={widget.y}
             zIndex={widget.zIndex || 1}
             onFocus={bringWidgetToFront}
+            type={widget.type}
           >
-            <Widget>
-              {renderWidgetContent(widget)}
+            <Widget widgetType={widget.type}>
+              {renderWidgetContent(widget, handleWidgetContentChange)}
             </Widget>
           </DraggableWidget>
         ))}
@@ -457,6 +530,6 @@ const Dashboard = () => {
       </Box>
     </Box>
   );
-};
+});
 
 export default Dashboard; 

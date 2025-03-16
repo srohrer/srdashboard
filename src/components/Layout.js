@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, CssBaseline, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip, Button } from '@mui/material';
@@ -11,6 +12,8 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import BlueIcon from '@mui/icons-material/BlurOn';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import LogoutIcon from '@mui/icons-material/Logout';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { useUser } from '../contexts/UserContext';
 import {
   DndContext,
@@ -23,8 +26,7 @@ import {
   DragOverlay
 } from '@dnd-kit/core';
 import Widget from './Widget';
-import ExampleWidget from './ExampleWidget';
-import TextboxWidget from './TextboxWidget';
+import { renderDragPreview, getWidgetWidth } from '../utils/widgetUtils';
 
 // Updated Main component to take full width regardless of sidebar state
 const Main = styled('main')(({ theme }) => ({
@@ -65,7 +67,8 @@ const customDropAnimation = {
   }),
 };
 
-const Layout = ({ children }) => {
+const Layout = ({ children, dashboardRef }) => {
+  // No longer create the ref here, it comes from the parent
   const [open, setOpen] = useState(false); // Default to closed for mobile-friendly experience
   const { currentTheme, setTheme, themeNames } = useTheme();
   const [themeMenuAnchor, setThemeMenuAnchor] = useState(null);
@@ -163,22 +166,6 @@ const Layout = ({ children }) => {
     setDragOffsets({ x: 0, y: 0 });
   };
 
-  // Render widget content for overlay based on type
-  const renderDragPreview = () => {
-    if (!activeId || !activeId.toString().startsWith('toolkit-')) {
-      return null;
-    }
-    
-    // Render the appropriate content based on the widget type
-    switch (activeDragType) {
-      case 'textbox':
-        return <TextboxWidget />;
-      case 'example':
-      default:
-        return <ExampleWidget />;
-    }
-  };
-
   const getThemeIcon = (themeName) => {
     switch(themeName) {
       case 'light':
@@ -226,6 +213,13 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
+  // Handler for resetting dashboard
+  const handleResetDashboard = () => {
+    if (dashboardRef.current) {
+      dashboardRef.current.resetDashboard();
+    }
+  };
+
   return (
     <DndContext 
       sensors={sensors}
@@ -253,14 +247,21 @@ const Layout = ({ children }) => {
         <CssBaseline />
         <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
           <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            {/* Left section with logout button */}
-            <Box>
+            {/* Left section with logout button and reset dashboard button */}
+            <Box sx={{ display: 'flex', gap: 1 }}>
               <Button 
                 color="inherit" 
                 startIcon={<LogoutIcon />}
                 onClick={handleLogout}
               >
                 Log out
+              </Button>
+              <Button
+                color="inherit"
+                startIcon={<DeleteSweepIcon />}
+                onClick={handleResetDashboard}
+              >
+                Empty Dashboard
               </Button>
             </Box>
             
@@ -288,6 +289,7 @@ const Layout = ({ children }) => {
         
         {/* Main content that takes full width */}
         <Main>
+          {/* Simply render children, we'll handle the ref directly in App.js */}
           {children}
         </Main>
         
@@ -316,7 +318,7 @@ const Layout = ({ children }) => {
         >
           {activeId && activeId.toString().startsWith('toolkit-') && (
             <Box sx={{ 
-              width: 300, // Exact same width as widgets on the canvas
+              width: getWidgetWidth(activeDragType), // Use same width function as actual widgets
               pointerEvents: 'none',
               opacity: 0.9,
               bgcolor: 'background.paper',
@@ -328,8 +330,8 @@ const Layout = ({ children }) => {
                 boxSizing: 'border-box'
               }
             }}>
-              <Widget>
-                {renderDragPreview()}
+              <Widget widgetType={activeDragType}>
+                {renderDragPreview(activeDragType)}
               </Widget>
             </Box>
           )}

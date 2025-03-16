@@ -5,6 +5,18 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import { UserProvider } from './contexts/UserContext';
 import { Box } from '@mui/material';
+import React, { useRef } from 'react';
+
+// Create a wrapper for Dashboard that provides the resetDashboard method
+const DashboardWithLayout = () => {
+  const dashboardRef = useRef(null);
+  
+  return (
+    <Layout dashboardRef={dashboardRef}>
+      <Dashboard ref={dashboardRef} />
+    </Layout>
+  );
+};
 
 function App() {
   return (
@@ -14,11 +26,7 @@ function App() {
           <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              } />
+              <Route path="/dashboard" element={<DashboardWithLayout />} />
               <Route path="/" element={<Navigate to="/login" replace />} />
             </Routes>
           </Router>
