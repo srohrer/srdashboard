@@ -21,6 +21,8 @@ import ImageIcon from '@mui/icons-material/Image';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import ChecklistIcon from '@mui/icons-material/Checklist';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useDraggable } from '@dnd-kit/core';
 
 // Styled component for the drawer header
@@ -195,6 +197,18 @@ const WidgetToolkit = ({ open, toggleDrawer, activeId }) => {
           type: 'example',
           label: 'Example', 
           icon: <WidgetsIcon fontSize="large" color="secondary" /> 
+        }
+      ]
+    },
+    ml: {
+      title: 'ML',
+      icon: <PsychologyIcon />,
+      widgets: [
+        {
+          id: 'sentiment',
+          type: 'sentiment',
+          label: 'Sentiment Analysis',
+          icon: <AnalyticsIcon fontSize="large" color="primary" />
         }
       ]
     }

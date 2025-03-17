@@ -3,6 +3,7 @@ import ExampleWidget from '../components/ExampleWidget';
 import TextboxWidget from '../components/TextboxWidget';
 import IconWidget from '../components/IconWidget';
 import TodoWidget from '../components/TodoWidget';
+import SentimentAnalysisWidget from '../components/SentimentAnalysisWidget';
 
 /**
  * Returns the appropriate width for a widget based on its type
@@ -52,6 +53,14 @@ export const renderWidgetContent = (widget, onContentChange) => {
           widgetId={widget.id}
         />
       );
+    case 'sentiment':
+      return (
+        <SentimentAnalysisWidget
+          content={widget.content || ''} 
+          onContentChange={onContentChange}
+          widgetId={widget.id}
+        />
+      );
     default:
       return <React.Fragment>Widget Content</React.Fragment>;
   }
@@ -72,6 +81,8 @@ export const renderDragPreview = (widgetType) => {
       return <ExampleWidget />;
     case 'todo':
       return <TodoWidget content='{"title":"Todo List","todos":[]}' />;
+    case 'sentiment':
+      return <SentimentAnalysisWidget />;
     default:
       return <ExampleWidget />;
   }
