@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -6,7 +6,6 @@ import {
   IconButton, 
   Grid,
   Paper,
-  Tooltip,
   List,
   ListItem,
   ListItemIcon,
@@ -17,12 +16,12 @@ import { styled } from '@mui/material/styles';
 import ChevronRight from '@mui/icons-material/ChevronRight';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
-import ImageIcon from '@mui/icons-material/Image';
 import WidgetsIcon from '@mui/icons-material/Widgets';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import ChecklistIcon from '@mui/icons-material/Checklist';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useDraggable } from '@dnd-kit/core';
 
 // Styled component for the drawer header
@@ -191,6 +190,12 @@ const WidgetToolkit = ({ open, toggleDrawer, activeId }) => {
           type: 'todo',
           label: 'Todo List', 
           icon: <ChecklistIcon fontSize="large" color="primary" /> 
+        },
+        { 
+          id: 'worldclock', 
+          type: 'worldclock',
+          label: 'World Clock', 
+          icon: <AccessTimeIcon fontSize="large" color="primary" /> 
         },
         { 
           id: 'example', 

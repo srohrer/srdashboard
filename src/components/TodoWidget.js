@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, Typography, IconButton, List, Paper } from '@mui/material';
+import { Box, TextField, Typography, IconButton, List, Paper, Fade } from '@mui/material';
 import { 
   DndContext, 
   useSensor, 
@@ -54,18 +54,31 @@ const TodoItem = ({ id, text, completed, onChange, onDelete, onComplete }) => {
         mb: 1, 
         p: 0.5, 
         display: 'flex', 
-        alignItems: 'center',
+        alignItems: 'stretch',
         borderLeft: completed ? '4px solid #4caf50' : 'none'
       }}
     >
-      <IconButton 
-        size="small" 
-        {...attributes} 
-        {...listeners}
-        sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}
+      <Box 
+        sx={{ 
+          display: 'flex',
+          alignItems: 'stretch'
+        }}
       >
-        <DragIndicatorIcon />
-      </IconButton>
+        <IconButton 
+          size="small" 
+          {...attributes} 
+          {...listeners}
+          sx={{ 
+            cursor: 'grab', 
+            '&:active': { cursor: 'grabbing' },
+            height: '100%',
+            alignSelf: 'stretch',
+            display: 'flex'
+          }}
+        >
+          <DragIndicatorIcon />
+        </IconButton>
+      </Box>
       
       <TextField
         fullWidth
@@ -73,6 +86,7 @@ const TodoItem = ({ id, text, completed, onChange, onDelete, onComplete }) => {
         value={text}
         onChange={(e) => onChange(id, e.target.value)}
         disabled={completed}
+        multiline
         onClick={preventDragPropagation}
         onMouseDown={preventDragPropagation}
         onKeyDown={preventDragPropagation}
@@ -82,27 +96,31 @@ const TodoItem = ({ id, text, completed, onChange, onDelete, onComplete }) => {
           '& .MuiInputBase-root': {
             fontSize: '0.9rem'
           },
-          flexGrow: 1
+          flexGrow: 1,
+          flexBasis: '60%',
+          maxWidth: '70%'
         }}
       />
       
-      <IconButton 
-        size="small" 
-        onClick={() => onComplete(id)} 
-        color={completed ? "success" : "default"}
-        title={completed ? "Mark as incomplete" : "Mark as complete"}
-      >
-        <CheckCircleIcon />
-      </IconButton>
-      
-      <IconButton 
-        size="small" 
-        onClick={() => onDelete(id)} 
-        color="error"
-        title="Delete task"
-      >
-        <DeleteIcon />
-      </IconButton>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
+        <IconButton 
+          size="small" 
+          onClick={() => onComplete(id)} 
+          color={completed ? "success" : "default"}
+          title={completed ? "Mark as incomplete" : "Mark as complete"}
+        >
+          <CheckCircleIcon />
+        </IconButton>
+        
+        <IconButton 
+          size="small" 
+          onClick={() => onDelete(id)} 
+          color="error"
+          title="Delete task"
+        >
+          <DeleteIcon />
+        </IconButton>
+      </Box>
     </Paper>
   );
 };
@@ -127,11 +145,26 @@ const TodoWidget = ({ userContext, themeContext, content = '{"title":"Todo List"
 
   const [todoData, setTodoData] = useState(parseContent(content));
   const { title, todos } = todoData;
+  const [showCelebration, setShowCelebration] = useState(false);
   
   // Update local state when content prop changes
   useEffect(() => {
     setTodoData(parseContent(content));
   }, [content]);
+
+  // Check if all todos are completed
+  useEffect(() => {
+    if (todos.length > 0 && todos.every(todo => todo.completed)) {
+      setShowCelebration(true);
+      // Hide celebration after 3 seconds
+      const timer = setTimeout(() => {
+        setShowCelebration(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowCelebration(false);
+    }
+  }, [todos]);
 
   // Set up DndContext sensors with optimized settings
   const sensors = useSensors(
@@ -220,7 +253,14 @@ const TodoWidget = ({ userContext, themeContext, content = '{"title":"Todo List"
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      width: '100%',
+      position: 'relative',
+      overflow: 'hidden'  // Prevent outer container from scrolling
+    }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
         <TextField
           value={title}
@@ -255,7 +295,11 @@ const TodoWidget = ({ userContext, themeContext, content = '{"title":"Todo List"
         </IconButton>
       </Box>
       
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <Box sx={{ 
+        flexGrow: 1, 
+        overflow: 'hidden', 
+        position: 'relative' 
+      }}>
         <DndContext 
           sensors={sensors} 
           onDragEnd={handleDragEnd}
@@ -264,7 +308,14 @@ const TodoWidget = ({ userContext, themeContext, content = '{"title":"Todo List"
             items={todos.map(todo => todo.id)} 
             strategy={verticalListSortingStrategy}
           >
-            <List disablePadding>
+            <List 
+              disablePadding 
+              sx={{ 
+                position: 'relative', 
+                zIndex: 1,
+                width: '100%'
+              }}
+            >
               {todos.map(todo => (
                 <TodoItem
                   key={todo.id}
@@ -298,6 +349,43 @@ const TodoWidget = ({ userContext, themeContext, content = '{"title":"Todo List"
           </Typography>
         </Box>
       )}
+      
+      {/* Celebration animation - moved outside of the scrollable container */}
+      <Fade in={showCelebration} timeout={500}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            animation: showCelebration ? 'celebrationAnim 2s ease-in-out' : 'none',
+            '@keyframes celebrationAnim': {
+              '0%': {
+                transform: 'scale(0.5)',
+                opacity: 0
+              },
+              '50%': {
+                transform: 'scale(1.5)',
+                opacity: 1
+              },
+              '100%': {
+                transform: 'scale(1)',
+                opacity: 0.8
+              }
+            }
+          }}
+        >
+          <Typography variant="h1" component="div">
+            🎉
+          </Typography>
+        </Box>
+      </Fade>
     </Box>
   );
 };
