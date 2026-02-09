@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Box, Typography, IconButton, Button, Tooltip } from '@mui/material';
+import { Box } from '@mui/material';
 import {
   useDraggable,
   useDroppable,
-  DragOverlay
 } from '@dnd-kit/core';
 import DeleteIcon from '@mui/icons-material/Delete';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import Widget from '../components/Widget';
 import React from 'react';
 import { useUser } from '../contexts/UserContext';
@@ -305,139 +303,146 @@ const Dashboard = forwardRef((props, ref) => {
     };
   }, []);
 
-  // Add a handler for DndContext's onDragMove event
-  const handleDragMove = (event) => {
-    const { active, delta } = event;
-    
-    if (!active) return;
-    
-    // Check if it's one of our canvas widgets (not from toolkit)
-    // Toolkit items have IDs that start with "toolkit-"
-    const isCanvasWidget = !active.id.toString().startsWith('toolkit-');
-    
-    if (isCanvasWidget) {
-      // Bring the dragged widget to front
-      bringWidgetToFront(active.id);
+  // Add event handlers to document to listen for drag events from the parent DndContext
+  useEffect(() => {
+    // Handler for DndContext's onDragMove event
+    const handleDragMove = (event) => {
+      const { active, delta } = event;
       
-      const activeWidget = widgets.find(widget => widget.id === active.id);
+      if (!active) return;
       
-      if (!activeWidget) return;
+      // Check if it's one of our canvas widgets (not from toolkit)
+      // Toolkit items have IDs that start with "toolkit-"
+      const isCanvasWidget = !active.id.toString().startsWith('toolkit-');
       
-      // Calculate current widget position with the delta
-      const currentX = activeWidget.x + delta.x;
-      const currentY = activeWidget.y + delta.y;
-      
-      // Get widget dimensions (assuming 300px width and roughly 150px height)
-      const widgetWidth = 300;
-      const widgetHeight = 150;
-      
-      // Check if widget is offscreen
-      const isOffLeft = currentX + widgetWidth / 2 < 0;
-      const isOffRight = currentX + widgetWidth / 2 > canvasRef.current?.clientWidth;
-      const isOffTop = currentY + widgetHeight / 2 < 0;
-      const isOffBottom = currentY + widgetHeight / 2 > canvasRef.current?.clientHeight;
-      
-      const isOffscreen = isOffLeft || isOffRight || isOffTop || isOffBottom;
-      
-      setIsDraggingOffscreen(isOffscreen);
-      
-      // Update delete indicator
-      if (isOffscreen) {
-        let direction = '';
-        let position = 0;
-        
-        if (isOffLeft) {
-          direction = 'left';
-          position = Math.max(0, Math.min(currentY, canvasRef.current?.clientHeight));
-        } else if (isOffRight) {
-          direction = 'right';
-          position = Math.max(0, Math.min(currentY, canvasRef.current?.clientHeight));
-        } else if (isOffTop) {
-          direction = 'top';
-          position = Math.max(0, Math.min(currentX, canvasRef.current?.clientWidth));
-        } else if (isOffBottom) {
-          direction = 'bottom';
-          position = Math.max(0, Math.min(currentX, canvasRef.current?.clientWidth));
-        }
-        
-        setDeleteIndicator({
-          visible: true,
-          direction,
-          position
-        });
-      } else {
-        setDeleteIndicator({ visible: false, direction: '', position: 0 });
-      }
-    }
-  };
-
-  // Add a handler for DndContext's onDragEnd event
-  const handleDragEnd = (event) => {
-    const { active, delta, over } = event;
-    
-    // Handle dragging from toolkit (create new widget)
-    if (active.id.toString().startsWith('toolkit-')) {
-      // Extract widget type from the data attribute
-      const widgetType = active.data.current?.type || 'example';
-      
-      // Create a unique ID for the new widget
-      const newId = `widget-${Date.now()}`;
-      
-      // Calculate position based on where it was dropped over the canvas
-      if (canvasRef.current && over && over.id === 'canvas') {
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        
-        // Calculate position relative to canvas - use exact position with offsets
-        // Subtract the offsets to place the widget so the initial click point is preserved
-        const x = mousePosition.x - canvasRect.left - dragOffsets.x;
-        const y = mousePosition.y - canvasRect.top - dragOffsets.y;
-        
-        // Increment z-counter for the new widget
+      if (isCanvasWidget) {
+        // Bring the dragged widget to front (inline to avoid closure dependency)
         const newZCounter = zCounter + 1;
         setZCounter(newZCounter);
-        
-        // Add the new widget
-        const newWidget = {
-          id: newId,
-          x: Math.max(0, x),
-          y: Math.max(0, y),
-          type: widgetType,
-          zIndex: newZCounter // Give it the highest z-index
-        };
-        
-        setWidgets([...widgets, newWidget]);
-      }
-    } else {
-      // Handle existing widget drag
-      if (isDraggingOffscreen) {
-        // Remove the widget
-        setWidgets(widgets.filter(widget => widget.id !== active.id));
-      } else if (delta) {
-        // Update widget position
         setWidgets(widgets.map(widget => {
           if (widget.id === active.id) {
-            return {
-              ...widget,
-              x: widget.x + delta.x,
-              y: widget.y + delta.y,
-              // Keep the highest z-index that was set during drag
-              zIndex: Math.max(widget.zIndex, zCounter)
-            };
+            return { ...widget, zIndex: newZCounter };
           }
           return widget;
         }));
+        
+        const activeWidget = widgets.find(widget => widget.id === active.id);
+        
+        if (!activeWidget) return;
+        
+        // Calculate current widget position with the delta
+        const currentX = activeWidget.x + delta.x;
+        const currentY = activeWidget.y + delta.y;
+        
+        // Get widget dimensions (assuming 300px width and roughly 150px height)
+        const widgetWidth = 300;
+        const widgetHeight = 150;
+        
+        // Check if widget is offscreen
+        const isOffLeft = currentX + widgetWidth / 2 < 0;
+        const isOffRight = currentX + widgetWidth / 2 > canvasRef.current?.clientWidth;
+        const isOffTop = currentY + widgetHeight / 2 < 0;
+        const isOffBottom = currentY + widgetHeight / 2 > canvasRef.current?.clientHeight;
+        
+        const isOffscreen = isOffLeft || isOffRight || isOffTop || isOffBottom;
+        
+        setIsDraggingOffscreen(isOffscreen);
+        
+        // Update delete indicator
+        if (isOffscreen) {
+          let direction = '';
+          let position = 0;
+          
+          if (isOffLeft) {
+            direction = 'left';
+            position = Math.max(0, Math.min(currentY, canvasRef.current?.clientHeight));
+          } else if (isOffRight) {
+            direction = 'right';
+            position = Math.max(0, Math.min(currentY, canvasRef.current?.clientHeight));
+          } else if (isOffTop) {
+            direction = 'top';
+            position = Math.max(0, Math.min(currentX, canvasRef.current?.clientWidth));
+          } else if (isOffBottom) {
+            direction = 'bottom';
+            position = Math.max(0, Math.min(currentX, canvasRef.current?.clientWidth));
+          }
+          
+          setDeleteIndicator({
+            visible: true,
+            direction,
+            position
+          });
+        } else {
+          setDeleteIndicator({ visible: false, direction: '', position: 0 });
+        }
       }
-    }
-    
-    // Reset states
-    setIsDraggingOffscreen(false);
-    setDeleteIndicator({ visible: false, direction: '', position: 0 });
-    // Reset drag offsets after the drop
-    setDragOffsets({ x: 0, y: 0 });
-  };
+    };
 
-  // Add event handlers to document to listen for drag events from the parent DndContext
-  useEffect(() => {
+    // Handler for DndContext's onDragEnd event
+    const handleDragEnd = (event) => {
+      const { active, delta, over } = event;
+      
+      // Handle dragging from toolkit (create new widget)
+      if (active.id.toString().startsWith('toolkit-')) {
+        // Extract widget type from the data attribute
+        const widgetType = active.data.current?.type || 'example';
+        
+        // Create a unique ID for the new widget
+        const newId = `widget-${Date.now()}`;
+        
+        // Calculate position based on where it was dropped over the canvas
+        if (canvasRef.current && over && over.id === 'canvas') {
+          const canvasRect = canvasRef.current.getBoundingClientRect();
+          
+          // Calculate position relative to canvas - use exact position with offsets
+          // Subtract the offsets to place the widget so the initial click point is preserved
+          const x = mousePosition.x - canvasRect.left - dragOffsets.x;
+          const y = mousePosition.y - canvasRect.top - dragOffsets.y;
+          
+          // Increment z-counter for the new widget
+          const newZCounter = zCounter + 1;
+          setZCounter(newZCounter);
+          
+          // Add the new widget
+          const newWidget = {
+            id: newId,
+            x: Math.max(0, x),
+            y: Math.max(0, y),
+            type: widgetType,
+            zIndex: newZCounter // Give it the highest z-index
+          };
+          
+          setWidgets([...widgets, newWidget]);
+        }
+      } else {
+        // Handle existing widget drag
+        if (isDraggingOffscreen) {
+          // Remove the widget
+          setWidgets(widgets.filter(widget => widget.id !== active.id));
+        } else if (delta) {
+          // Update widget position
+          setWidgets(widgets.map(widget => {
+            if (widget.id === active.id) {
+              return {
+                ...widget,
+                x: widget.x + delta.x,
+                y: widget.y + delta.y,
+                // Keep the highest z-index that was set during drag
+                zIndex: Math.max(widget.zIndex, zCounter)
+              };
+            }
+            return widget;
+          }));
+        }
+      }
+      
+      // Reset states
+      setIsDraggingOffscreen(false);
+      setDeleteIndicator({ visible: false, direction: '', position: 0 });
+      // Reset drag offsets after the drop
+      setDragOffsets({ x: 0, y: 0 });
+    };
+
     const handleDragMoveEvent = (event) => {
       if (event.detail && event.detail.active) {
         handleDragMove(event.detail);

@@ -1,8 +1,7 @@
 import React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, CssBaseline, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip, Button } from '@mui/material';
-import { Menu as MuiMenu } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../contexts/ThemeContext';
 import WidgetToolkit from './WidgetToolkit';
@@ -12,7 +11,6 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import BlueIcon from '@mui/icons-material/BlurOn';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import LogoutIcon from '@mui/icons-material/Logout';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { useUser } from '../contexts/UserContext';
 import {

@@ -28,11 +28,6 @@ const TextboxWidget = ({ userContext, themeContext, content = '', onContentChang
     }
   };
   
-  // This function is critical to prevent drag events from interfering with text editing
-  const preventDragPropagation = (e) => {
-    e.stopPropagation();
-  };
-  
   return (
     <Box 
       sx={{ 
